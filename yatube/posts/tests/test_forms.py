@@ -1,24 +1,13 @@
 import shutil
 import tempfile
-<<<<<<< HEAD
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+
 from posts.forms import CommentForm, PostForm
 from posts.models import Comment, Group, Post, User
-
-TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
-=======
-
-from django.conf import settings
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, TestCase, override_settings
-from django.urls import reverse
-from posts.forms import PostForm
-from posts.models import Group, Post, User
->>>>>>> origin/master
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -47,10 +36,7 @@ class PostCreateFormTests(TestCase):
             post_id=cls.post.id
         )
         cls.form = PostForm()
-<<<<<<< HEAD
         cls.comment_form = CommentForm()
-=======
->>>>>>> origin/master
         small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x01\x00'
             b'\x01\x00\x00\x00\x00\x21\xf9\x04'
