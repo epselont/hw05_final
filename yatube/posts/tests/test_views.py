@@ -1,15 +1,24 @@
-from django import forms
-from django.test import Client, TestCase
-from django.urls import reverse
+import shutil
+import tempfile
 
+from django import forms
+from django.conf import settings
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import Client, TestCase, override_settings
+from django.urls import reverse
 from posts.models import Group, Post, User
 
+TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
+
+@override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostPagesTests(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Shakespeare')
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.user)
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test_group',
@@ -20,21 +29,38 @@ class PostPagesTests(TestCase):
             slug='test_group_two',
             description='Тестовое описание группы',
         )
+        small_gif = (
+            b'\x47\x49\x46\x38\x39\x61\x01\x00'
+            b'\x01\x00\x00\x00\x00\x21\xf9\x04'
+            b'\x01\x0a\x00\x01\x00\x2c\x00\x00'
+            b'\x00\x00\x01\x00\x01\x00\x00\x02'
+            b'\x02\x4c\x01\x00\x3b'
+        )
+        cls.uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=small_gif,
+            content_type='image/gif'
+        )
         Post.objects.create(
             author=cls.user,
             text='Тестовый текст',
-            group=cls.group
+            group=cls.group,
+            image=cls.uploaded
         )
         cls.post = Post.objects.create(
             author=cls.user,
             text='Тестовый текст',
-            group=cls.group_test_none
+            group=cls.group_test_none,
+            image=cls.uploaded
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
         self.guest_client = Client()
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
 
     def test_pages_uses_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -44,7 +70,7 @@ class PostPagesTests(TestCase):
                 'posts:group_list', kwargs={'slug': f'{self.group.slug}'}
             ): 'posts/group_list.html',
             reverse(
-                'posts:profile', kwargs={'username': f'{PostPagesTests.user}'}
+                'posts:profile', kwargs={'username': f'{self.user}'}
             ): 'posts/profile.html',
             reverse(
                 'posts:post_detail', kwargs={'post_id': self.post.id}
@@ -62,11 +88,12 @@ class PostPagesTests(TestCase):
     def test_index_page_show_correct_context(self):
         """Шаблон index сформирован с правильным контекстом."""
         response = self.authorized_client.get(reverse('posts:index'))
-        post_object = response.context['page_obj'][1]
+        post_object = response.context['page_obj'].object_list[0]
         post_data = {
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
-            post_object.author.username: 'Shakespeare'
+            post_object.author.username: 'Shakespeare',
+            post_object.image: f'{self.post.image}'
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -76,14 +103,17 @@ class PostPagesTests(TestCase):
         """Шаблон group_list сформирован с правильным контекстом."""
         response = self.authorized_client.get(
             reverse(
-                'posts:group_list', kwargs={'slug': f'{self.group.slug}'}
+                'posts:group_list', kwargs={
+                    'slug': f'{self.group_test_none.slug}'
+                }
             )
         )
         post_object = response.context['page_obj'][0]
         post_data = {
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
-            post_object.author.username: 'Shakespeare'
+            post_object.author.username: 'Shakespeare',
+            post_object.image: f'{self.post.image}'
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -93,14 +123,15 @@ class PostPagesTests(TestCase):
         """Шаблон profile сформирован с правильным контекстом."""
         response = self.authorized_client.get(
             reverse(
-                'posts:profile', kwargs={'username': f'{PostPagesTests.user}'}
+                'posts:profile', kwargs={'username': f'{self.user}'}
             )
         )
-        post_object = response.context['page_obj'][1]
+        post_object = response.context['page_obj'][0]
         post_data = {
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
-            post_object.author.username: 'Shakespeare'
+            post_object.author.username: 'Shakespeare',
+            post_object.image: f'{self.post.image}'
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -115,7 +146,8 @@ class PostPagesTests(TestCase):
         post_data = {
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
-            post_object.author.username: 'Shakespeare'
+            post_object.author.username: 'Shakespeare',
+            post_object.image: f'{self.post.image}'
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -134,7 +166,7 @@ class PostPagesTests(TestCase):
                 self.assertIsInstance(form_field, expected)
 
     def test_post_edit_pages_show_correct_context(self):
-        """Шаблон post_detail сформирован с правильным контекстом."""
+        """Шаблон post_edit сформирован с правильным контекстом."""
         response = self.authorized_client.get(
             reverse('posts:post_edit', kwargs={'post_id': self.post.id})
         )
@@ -203,6 +235,8 @@ class PaginatorViewsTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='Shakespeare')
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(cls.user)
         cls.group = Group.objects.create(
             title='Тестовая группа',
             slug='test_group',
@@ -215,10 +249,6 @@ class PaginatorViewsTest(TestCase):
                 text='Тестовый текст',
                 group=cls.group
             )
-
-    def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
 
     def test_index_page_list_is_ten_post(self):
         response = self.authorized_client.get(reverse('posts:index'))
