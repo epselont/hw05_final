@@ -5,8 +5,8 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-from posts.forms import PostForm
-from posts.models import Group, Post, User
+from posts.forms import CommentForm, PostForm
+from posts.models import Comment, Group, Post, User
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -29,7 +29,13 @@ class PostCreateFormTests(TestCase):
             text='Тестовый текст',
             group=cls.group
         )
+        cls.comment = Comment.objects.create(
+            text='Тестовый комментарий',
+            author=cls.user,
+            post_id=cls.post.id
+        )
         cls.form = PostForm()
+        cls.comment_form = CommentForm()
         small_gif = (
             b'\x47\x49\x46\x38\x39\x61\x01\x00'
             b'\x01\x00\x00\x00\x00\x21\xf9\x04'
@@ -81,7 +87,7 @@ class PostCreateFormTests(TestCase):
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Тестовый текст',
-            'group': PostCreateFormTests.group.id
+            'group': self.group.id
         }
         response = self.guest_client.post(
             reverse('posts:post_create'),
@@ -97,7 +103,7 @@ class PostCreateFormTests(TestCase):
         posts_count = Post.objects.count()
         form_data = {
             'text': 'Изменённый текст',
-            'group': PostCreateFormTests.group.id
+            'group': self.group.id
         }
         response = self.authorized_client.post(
             reverse('posts:post_edit', kwargs={'post_id': f'{self.post.id}'}),
@@ -117,3 +123,55 @@ class PostCreateFormTests(TestCase):
             ).exists()
         )
         self.assertEqual(Post.objects.count(), posts_count)
+
+    def test_comment_form_authorized_client(self):
+        comment_count = Comment.objects.count()
+        form_data = {
+            'text': 'Новый комментарий',
+        }
+        response = self.authorized_client.post(
+            reverse(
+                'posts:add_comment',
+                kwargs={'post_id': f'{self.post.id}'}
+            ),
+            data=form_data,
+            follow=True
+        )
+        self.assertRedirects(
+            response, reverse(
+                'posts:post_detail',
+                kwargs={'post_id': f'{self.post.id}'}
+            )
+        )
+        self.assertTrue(
+            Comment.objects.filter(
+                text=form_data['text'],
+                post_id=self.post.id
+            ).exists()
+        )
+        self.assertEqual(Comment.objects.count(), comment_count + 1)
+
+    def test_comment_form_not_authorized_client(self):
+        comment_count = Comment.objects.count()
+        form_data = {
+            'text': 'Новый комментарий неизвестного',
+        }
+        response = self.guest_client.post(
+            reverse(
+                'posts:add_comment',
+                kwargs={'post_id': f'{self.post.id}'}
+            ),
+            data=form_data,
+            follow=True
+        )
+        self.assertRedirects(
+            response,
+            f'/auth/login/?next=/posts/{self.post.id}/comment/'
+        )
+        self.assertTrue(
+            not Comment.objects.filter(
+                text=form_data['text'],
+                post_id=self.post.id
+            ).exists()
+        )
+        self.assertEqual(Comment.objects.count(), comment_count)
