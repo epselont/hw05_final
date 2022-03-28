@@ -3,6 +3,7 @@ import tempfile
 
 from django import forms
 from django.conf import settings
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -99,6 +100,24 @@ class PostPagesTests(TestCase):
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
                 self.assertEqual(expected, text)
+
+    def test_cached_ibdex_page(self):
+        post_cached = Post.objects.create(
+            author=self.user,
+            text='Тестовый текст',
+            group=self.group,
+        )
+        response = self.authorized_client.get(reverse('posts:index')).content
+        post_cached.delete()
+        response_cached = self.authorized_client.get(
+            reverse('posts:index')
+        ).content
+        self.assertEqual(response, response_cached)
+        cache.clear()
+        response_non_cached = self.authorized_client.get(
+            reverse('posts:index')
+        ).content
+        self.assertNotEqual(response, response_non_cached)
 
     def test_group_list_show_correct_context(self):
         """Шаблон group_list сформирован с правильным контекстом."""
