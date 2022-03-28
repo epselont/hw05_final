@@ -1,3 +1,4 @@
+from core.models import CreatedModel
 from django.contrib.auth import get_user_model
 from django.db import models
 
@@ -64,7 +65,7 @@ class Post(models.Model):
         return self.text[:15]
 
 
-class Comment(models.Model):
+class Comment(CreatedModel):
     text = models.TextField(
         'Текст комментария',
         help_text='Оставьте ваш комментарий'
@@ -80,10 +81,6 @@ class Comment(models.Model):
         on_delete=models.CASCADE,
         related_name='comments',
         verbose_name='Автор'
-    )
-    created = models.DateTimeField(
-        'Дата создания',
-        auto_now_add=True
     )
 
     def __str__(self):
