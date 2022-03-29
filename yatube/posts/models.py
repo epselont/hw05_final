@@ -91,3 +91,21 @@ class Comment(CreatedModel):
         ordering = ('-created',)
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Коментарии'
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='follower',
+        verbose_name='Подписчик'
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='following',
+        verbose_name='Автор'
+    )
+
+    def __str__(self):
+        return f'{self.user} подписан на автора {self.author.get_full_name()}'
