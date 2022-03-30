@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from posts.models import Group, Post, User
+from posts.models import Follow, Group, Post, User
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -316,3 +316,63 @@ class PaginatorViewsTest(TestCase):
             ) + '?page=2'
         )
         self.assertEqual(len(response.context['page_obj']), 3)
+
+
+class FollowViewsTest(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.user = User.objects.create_user(username='User')
+        cls.follower = Client()
+        cls.follower.force_login(cls.user)
+        cls.author = User.objects.create_user(username='Author')
+        cls.author_client = Client()
+        cls.author_client.force_login(cls.author)
+        cls.post = Post.objects.create(
+            text='Тестовый пост для подписчиков',
+            author=cls.author
+        )
+
+    def test_follow(self):
+        response = self.follower.get(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': f'{self.author}'}
+            )
+        )
+        self.assertTrue(
+            Follow.objects.filter(user=self.user, author=self.author).exists()
+        )
+        self.assertRedirects(response, reverse(
+            'posts:profile',
+            args=[self.author])
+        )
+
+    def test_unfollow(self):
+        Follow.objects.create(user=self.user, author=self.author)
+        response = self.follower.get(
+            reverse(
+                'posts:profile_unfollow',
+                kwargs={'username': f'{self.author}'}
+            )
+        )
+        self.assertFalse(
+            Follow.objects.filter(user=self.user, author=self.author).exists()
+        )
+        self.assertRedirects(response, reverse(
+            'posts:profile',
+            args=[self.author])
+        )
+
+    def test_view_posts_unfollow(self):
+        response = self.follower.get(reverse('posts:follow_index'))
+        self.assertTrue(
+            self.post not in response.context['page_obj'].object_list
+        )
+
+    def test_view_posts_follow(self):
+        Follow.objects.create(user=self.user, author=self.author)
+        response = self.follower.get(reverse('posts:follow_index'))
+        self.assertTrue(
+            self.post in response.context['page_obj'].object_list
+        )
