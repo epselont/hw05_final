@@ -7,7 +7,6 @@ from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
-
 from posts.models import Follow, Group, Post, User
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -69,10 +68,10 @@ class PostPagesTests(TestCase):
         templates_page_names = {
             reverse('posts:index'): 'posts/index.html',
             reverse(
-                'posts:group_list', kwargs={'slug': f'{self.group.slug}'}
+                'posts:group_list', kwargs={'slug': self.group.slug}
             ): 'posts/group_list.html',
             reverse(
-                'posts:profile', kwargs={'username': f'{self.user}'}
+                'posts:profile', kwargs={'username': self.user}
             ): 'posts/profile.html',
             reverse(
                 'posts:post_detail', kwargs={'post_id': self.post.id}
@@ -95,7 +94,7 @@ class PostPagesTests(TestCase):
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
             post_object.author.username: 'Shakespeare',
-            post_object.image: f'{self.post.image}'
+            post_object.image: self.post.image
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -124,7 +123,7 @@ class PostPagesTests(TestCase):
         response = self.authorized_client.get(
             reverse(
                 'posts:group_list', kwargs={
-                    'slug': f'{self.group_test_none.slug}'
+                    'slug': self.group_test_none.slug
                 }
             )
         )
@@ -133,7 +132,7 @@ class PostPagesTests(TestCase):
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
             post_object.author.username: 'Shakespeare',
-            post_object.image: f'{self.post.image}'
+            post_object.image: self.post.image
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -143,7 +142,7 @@ class PostPagesTests(TestCase):
         """Шаблон profile сформирован с правильным контекстом."""
         response = self.authorized_client.get(
             reverse(
-                'posts:profile', kwargs={'username': f'{self.user}'}
+                'posts:profile', kwargs={'username': self.user}
             )
         )
         post_object = response.context['page_obj'][0]
@@ -151,7 +150,7 @@ class PostPagesTests(TestCase):
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
             post_object.author.username: 'Shakespeare',
-            post_object.image: f'{self.post.image}'
+            post_object.image: self.post.image
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -167,7 +166,7 @@ class PostPagesTests(TestCase):
             post_object.text: 'Тестовый текст',
             post_object.group.title: 'Тестовая группа',
             post_object.author.username: 'Shakespeare',
-            post_object.image: f'{self.post.image}'
+            post_object.image: self.post.image
         }
         for expected, text in post_data.items():
             with self.subTest(expected=expected):
@@ -222,11 +221,11 @@ class PostPagesTests(TestCase):
             reverse('posts:index'),
             reverse(
                 'posts:group_list',
-                kwargs={'slug': f'{self.group_test_none.slug}'}
+                kwargs={'slug': self.group_test_none.slug}
             ),
             reverse(
                 'posts:profile',
-                kwargs={'username': f'{PostPagesTests.user}'}
+                kwargs={'username': self.user}
             )
         ]
         for view in views:
@@ -242,7 +241,7 @@ class PostPagesTests(TestCase):
         """
         response = self.authorized_client.get(
             reverse(
-                'posts:group_list', kwargs={'slug': f'{self.group.slug}'}
+                'posts:group_list', kwargs={'slug': self.group.slug}
             )
         )
         self.assertTrue(
@@ -283,7 +282,7 @@ class PaginatorViewsTest(TestCase):
     def test_group_list_page_list_is_ten_post(self):
         response = self.authorized_client.get(
             reverse(
-                'posts:group_list', kwargs={'slug': f'{self.group.slug}'}
+                'posts:group_list', kwargs={'slug': self.group.slug}
             )
         )
         self.assertEqual(len(response.context['page_obj']), 10)
@@ -291,7 +290,7 @@ class PaginatorViewsTest(TestCase):
     def test_group_list_second_page_contains_three_records(self):
         response = self.authorized_client.get(
             reverse(
-                'posts:group_list', kwargs={'slug': f'{self.group.slug}'}
+                'posts:group_list', kwargs={'slug': self.group.slug}
             ) + '?page=2'
         )
         self.assertEqual(len(response.context['page_obj']), 3)
@@ -300,7 +299,7 @@ class PaginatorViewsTest(TestCase):
         response = self.authorized_client.get(
             reverse(
                 'posts:profile', kwargs={
-                    'username': f'{PaginatorViewsTest.user}'
+                    'username': self.user
                 }
             )
         )
@@ -311,7 +310,7 @@ class PaginatorViewsTest(TestCase):
             reverse(
                 'posts:profile',
                 kwargs={
-                    'username': f'{PaginatorViewsTest.user}'
+                    'username': self.user
                 }
             ) + '?page=2'
         )
@@ -323,21 +322,23 @@ class FollowViewsTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='User')
-        cls.follower = Client()
-        cls.follower.force_login(cls.user)
         cls.author = User.objects.create_user(username='Author')
-        cls.author_client = Client()
-        cls.author_client.force_login(cls.author)
         cls.post = Post.objects.create(
             text='Тестовый пост для подписчиков',
             author=cls.author
         )
 
+    def setUp(self):
+        self.follower = Client()
+        self.follower.force_login(self.user)
+        self.author_client = Client()
+        self.author_client.force_login(self.author)
+
     def test_follow(self):
         response = self.follower.get(
             reverse(
                 'posts:profile_follow',
-                kwargs={'username': f'{self.author}'}
+                kwargs={'username': self.author}
             )
         )
         self.assertTrue(
@@ -353,7 +354,7 @@ class FollowViewsTest(TestCase):
         response = self.follower.get(
             reverse(
                 'posts:profile_unfollow',
-                kwargs={'username': f'{self.author}'}
+                kwargs={'username': self.author}
             )
         )
         self.assertFalse(
