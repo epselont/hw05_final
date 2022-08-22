@@ -1,25 +1,9 @@
-# hw05_final - Проект спринта: подписки на авторов, спринт 6 в Яндекс.Практикум
+# Yatube
+Yatube - социальная сеть для публикации блогов, с возможностью постить как в общую ленту, так и в группы по интересам. Имеет возможность подписываться на интересных авторов.
+***
 
-## Спринт 6 - Проект спринта: подписки на авторов
-
-### hw05_final - Проект спринта: подписки на авторов, Яндекс.Практикум.
-
-Покрытие тестами проекта Yatube из спринта 6 Питон-разработчика бекенда Яндекс.Практикум. Все что нужно, это покрыть тестами проект, в учебных целях. Реализована система подписок/отписок на авторов постов.
-
-Стек:
-
-- Python 3.10.5
-- Django==2.2.28
-- mixer==7.1.2
-- Pillow==9.0.1
-- pytest==6.2.4
-- pytest-django==4.4.0
-- pytest-pythonpath==0.7.3
-- requests==2.26.0
-- six==1.16.0
-- sorl-thumbnail==12.7.0
-- Pillow==9.0.1
-- django-environ==0.8.1
+## Стек технологий
+Python 3.7+, Django 2.2.6, unittest, pytest
 
 ### Настройка и запуск на ПК
 
@@ -90,5 +74,8 @@ python yatube/manage.py runserver localhost:80
 
 Заходим в http://localhost/admin и создаем группы и записи.
 После чего записи и группы появятся на главной странице.
-
-[![CI](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml/badge.svg?branch=master)](https://github.com/yandex-praktikum/hw05_final/actions/workflows/python-app.yml)
+## Тесты
+#### Тесты запускаются командой:
+    python manage.py test
+#### или командой:
+    pytest
